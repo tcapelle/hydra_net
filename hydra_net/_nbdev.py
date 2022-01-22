@@ -4,15 +4,20 @@ __all__ = ["index", "modules", "custom_doc_links", "git_url"]
 
 index = {"show_image": "01_data.ipynb",
          "show_images": "01_data.ipynb",
+         "matlab_to_np": "01_data.ipynb",
          "NYUDataset": "01_data.ipynb",
          "ConvLayer": "02_layers.ipynb",
          "CRPBlock": "02_layers.ipynb",
          "UnetBlock": "02_layers.ipynb",
-         "DynamicUnet": "03_hydranet.ipynb"}
+         "DynamicUnet": "03_hydranet.ipynb",
+         "HydraNet": "03_hydranet.ipynb",
+         "DEVICE": "04_trainer.ipynb",
+         "Trainer": "04_trainer.ipynb"}
 
 modules = ["data.py",
            "layers.py",
-           "hydranet.py"]
+           "hydranet.py",
+           "trainer.py"]
 
 doc_url = "https://tcapelle.github.io/hydra_net/"
 
