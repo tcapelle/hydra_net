@@ -8,30 +8,33 @@ import torch
 import torch.nn as nn
 from torch.optim import Adam
 from torch.optim.lr_scheduler import OneCycleLR
-from torch.utils.data import DataLoader
 from fastcore.all import *
 from tqdm.notebook import tqdm
 from accelerate import Accelerator
 
-from .hydranet import HydraNet
-from .data import NYUDataset
+from .utils import *
+from .data import *
 
 # Cell
 class Trainer:
     "A simple trainer using Accelerate"
-    def __init__(self, dataloader, model, loss_func, eval_dataloader=None, fp16=False, wandb=False):
+    def __init__(self, train_dl, model, loss_func, valid_dl=None, fp16=False, log=True):
         store_attr()
         self.optimizer = None
         self.scheduler = None
         self.acc = Accelerator(fp16=fp16)
-        if wandb:
-            wandb.init(project="HydraNet")
+        if log:
+            wandb.init(project="HydraNet", entity="hydranet")
 
     def prepare(self):
-        self.model, self.optimizer, self.dataloader = self.acc.prepare(self.model, self.optimizer, self.dataloader)
+        self.model, self.optimizer, self.train_dl, self.valid_dl = self.acc.prepare(self.model, self.optimizer, self.train_dl, self.valid_dl)
 
-    def one_batch(self):
-        return next(iter(self.dataloader))
+    def one_batch(self, dl="train"):
+        if dl == "train":
+            dl = self.train_dl
+        elif dl == "valid":
+            dl = self.valid_dl
+        return next(iter(dl))
 
     def train_step(self, inputs, targets):
 
@@ -51,50 +54,95 @@ class Trainer:
         return loss
 
 
-
-
-
-
     def train_log(self, loss, example_ct, pbar):
         # Where the magic happens
-        if self.wandb:
+        if self.log:
             wandb.log({"train_loss": loss}, step=example_ct)
         pbar.set_postfix({"Loss" : f'{loss:.3f}'})
 
     def train_one_epoch(self):
-        for b in (pbar :=tqdm(self.dataloader, leave=False)):
+        for b in (pbar :=tqdm(self.train_dl, leave=False)):
             images, depths, labels = b
             loss = self.train_step(images, depths).item()
             self.example_ct +=  len(images)
             self.train_log(loss, self.example_ct, pbar)
         return loss
 
-    def eval_one_epoch(self, inputs, targets):
+    def valid_log(self, loss, example_ct):
+        # Where the magic happens
+        if self.log:
+            res = self.predict_one_batch()
+            self.log_image_table(*res)
+            wandb.log({"val_loss": loss}, step=example_ct)
+
+    def eval_one_epoch(self):
         self.model.eval()
+        val_loss = 0.
         with torch.inference_mode():
-            for b in tqdm(self.eval_dataloader, leave=False):
+            for b in tqdm(self.valid_dl, leave=False):
+                inputs, targets, _ = b
                 # Forward pass ➡
                 outputs = self.model(inputs)
-                loss = self.loss_func(outputs, targets)
+                # accum loss
+                val_loss += self.loss_func(outputs, targets)*len(inputs)
+        val_loss = val_loss/len(self.valid_dl.dataset)
+        self.valid_log(val_loss, self.example_ct)
+        return val_loss
+
 
     def _fit(self, epochs=5):
         self.example_ct = 0
         self.prepare()
         for epoch in tqdm(range(epochs)):
             loss = self.train_one_epoch()
-            print(loss)
+            val_loss = self.eval_one_epoch()
+            print(f"i={epoch}, train_loss={loss:3f}, val_loss={val_loss:3f}")
+        if self.log:
+            wandb.finish()
 
-    def fit(self, epochs=5, lr=1e-3):
+    @delegates(Adam, but="lr")
+    def fit(self, epochs=5, lr=1e-3, **kwargs):
         self.model.train()
-        self.optimizer = Adam(self.model.parameters(), lr=lr)
+        self.optimizer = Adam(self.model.parameters(), lr=lr, **kwargs)
         self._fit(epochs)
 
-
-    def fit_one_cyle(self, epochs=5, lr=1e-3, max_lr=1e-1):
+    @delegates(Adam, but="lr")
+    def fit_one_cyle(self, epochs=5, lr=1e-3, max_lr=1e-1, **kwargs):
         self.model.train()
-        self.optimizer = Adam(self.model.parameters(), lr=lr)
+        self.optimizer = Adam(self.model.parameters(), lr=lr, **kwargs)
         self.scheduler = OneCycleLR(self.optimizer,
                                     max_lr=max_lr,
-                                    steps_per_epoch=len(self.dataloader),
+                                    steps_per_epoch=len(self.train_dl),
                                     epochs=epochs)
         self._fit(epochs)
+
+    def predict_one_batch(self, dl="valid"):
+        self.model.eval()
+        with torch.inference_mode():
+            b = self.one_batch(dl="valid")
+            inputs, targets, _ = b
+            preds = self.model(inputs)
+
+        return inputs, preds, targets
+
+    @staticmethod
+    def _show_preds(inputs, preds, targets, max_n=9):
+        for i, (img, pred, tar) in enumerate(zip(inputs[:max_n], preds[:max_n], targets[:max_n])):
+            show_images([img, pred, tar], titles=["img", "pred", "tar"] if i==0 else None)
+
+    def show_results(self, dl="valid"):
+        res = self.predict_one_batch(dl="valid")
+        self._show_preds(*res)
+
+    @staticmethod
+    def _wandb_table(inputs, preds, targets):
+        table = wandb.Table(columns=["image", "pred", "target"])
+        for img, pred, targ in zip(inputs.to("cpu"), preds.to("cpu"), targets.to("cpu")):
+            table.add_data(wandb.Image(img.permute(1,2,0).numpy()*255),
+                           wandb.Image(to_viridis(pred)),
+                           wandb.Image(to_viridis(targ)))
+
+    def log_image_table(self, inputs, preds, targets):
+        "Log a wandb.Table with (img, pred, target)"
+        table = self._wandb_table(inputs, preds, targets)
+        wandb.log({"predictions_table":table}, commit=False)
