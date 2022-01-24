@@ -12,10 +12,18 @@ from .utils import plot_images
 
 
 class NYUDataset(data.Dataset):
-    def __init__(self, run: Union[wandb_run.Run, None] = None, **kwargs) -> None:
+    def __init__(
+        self,
+        artifact_name: str,
+        artifact_version: Union[str, int],
+        run: Union[wandb_run.Run, None] = None,
+        **kwargs,
+    ) -> None:
         super().__init__(**kwargs)
         self.run = run
-        dataset_path = self._fetch_artifact()
+        dataset_path = self._fetch_artifact(
+            artifact_name=artifact_name, artifact_version=artifact_version
+        )
         dataset_path = os.path.join(dataset_path, "nyu_depth_v2_labeled.mat")
         assert os.path.isfile(dataset_path), f"Unable to find Data file {dataset_path}"
         data_matrix = mat73.loadmat(dataset_path)
@@ -24,8 +32,8 @@ class NYUDataset(data.Dataset):
         self.depths = data_matrix["depths"]
         self.labels = data_matrix["labels"]
 
-    def _fetch_artifact(self):
-        artifact = self.run.use_artifact("NYUDepthV2:latest")
+    def _fetch_artifact(self, artifact_name, artifact_version):
+        artifact = self.run.use_artifact(f"{artifact_name}:{str(artifact_version)}")
         return artifact.download()
 
     def __len__(self):
