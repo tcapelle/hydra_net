@@ -16,35 +16,6 @@ class ConvLayer(nn.Sequential):
         super().__init__(*layers)
 
 # Cell
-# Reference: https://github.com/DrSleep/refinenet-pytorch/blob/master/utils/layer_factory.py
-
-# class CRPBlock(nn.Module):
-
-#     def __init__(self, in_channels, out_channels, num_stages, groups=False):
-#         super().__init__()
-#         for i in range(num_stages):
-#             setattr(
-#                 self, '{}_{}'.format(i+1, 'outvar_dimred'),
-#                 nn.Conv2d(
-#                     in_channels if (i == 0) else out_channels,
-#                     out_channels, kernel_size=1, stride=1,
-#                     padding=0, bias=False,
-#                     groups=in_channels if groups else 1
-#                 )
-#             )
-#         self.num_stages = num_stages
-#         self.maxpool = nn.MaxPool2d(kernel_size=5, stride=1, padding=2)
-
-#     def forward(self, x):
-#         out = x
-#         for i in range(self.num_stages):
-#             out = self.maxpool(out)
-#             out = getattr(
-#                 self, '{}_{}'.format(i + 1, 'outvar_dimred')
-#             )(out)
-#             x = out + x
-#         return x
-
 class CRPBlock(nn.Module):
     "A bunch of convs and a maxpool with a tricky forward"
     def __init__(self, in_channels, out_channels, num_stages=1, use_groups=False):

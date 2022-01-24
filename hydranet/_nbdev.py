@@ -2,8 +2,8 @@
 
 __all__ = ["index", "modules", "custom_doc_links", "git_url"]
 
-index = {"show_image": "01_data.ipynb",
-         "show_images": "01_data.ipynb",
+index = {"show_image": "00_utils.ipynb",
+         "show_images": "00_utils.ipynb",
          "matlab_to_np": "01_data.ipynb",
          "NYUDataset": "01_data.ipynb",
          "ConvLayer": "02_layers.ipynb",
@@ -11,16 +11,16 @@ index = {"show_image": "01_data.ipynb",
          "UnetBlock": "02_layers.ipynb",
          "DynamicUnet": "03_hydranet.ipynb",
          "HydraNet": "03_hydranet.ipynb",
-         "DEVICE": "04_trainer.ipynb",
          "Trainer": "04_trainer.ipynb"}
 
-modules = ["data.py",
+modules = ["utils.py",
+           "data.py",
            "layers.py",
            "hydranet.py",
            "trainer.py"]
 
-doc_url = "https://tcapelle.github.io/hydra_net/"
+doc_url = "https://tcapelle.github.io/hydranet/"
 
-git_url = "https://github.com/tcapelle/hydra_net/tree/master/"
+git_url = "https://github.com/tcapelle/hydranet/tree/master/"
 
 def custom_doc_links(name): return None

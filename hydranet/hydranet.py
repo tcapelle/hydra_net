@@ -48,7 +48,11 @@ class HydraNet(nn.Module):
     def __init__(self, backbone="mobilenetv2_100", hidden_dim=256, num_classes=21):
         super().__init__()
         self.backbone = DynamicUnet(backbone, dim=hidden_dim)
-        self.segmentation_head = nn.Conv2d(hidden_dim, num_classes, 1, bias=False)
+
+        # A simple segmentation head
+        self.segmentation_head = nn.Sequential(
+            ConvLayer(hidden_dim, hidden_dim),
+            nn.Conv2d(hidden_dim, num_classes, kernel_size=1, bias=False))
 
     def forward(self, x):
 
