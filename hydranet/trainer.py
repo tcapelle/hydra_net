@@ -141,6 +141,7 @@ class Trainer:
             table.add_data(wandb.Image(img.permute(1,2,0).numpy()*255),
                            wandb.Image(to_viridis(pred)),
                            wandb.Image(to_viridis(targ)))
+            return table
 
     def log_image_table(self, inputs, preds, targets):
         "Log a wandb.Table with (img, pred, target)"
