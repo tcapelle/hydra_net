@@ -44,7 +44,7 @@ class NYUDataset:
 
     def __len__(self): return self.images.shape[-1]
 
-    def dataloader(self, batch_size: int, num_workers: int, shuffle: bool, pin_memory: bool) -> data.DataLoader:
+    def dataloader(self, batch_size: int, num_workers: int, shuffle: bool=False, pin_memory: bool=False) -> data.DataLoader:
          return data.DataLoader(
              self,
              batch_size=batch_size,
