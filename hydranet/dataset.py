@@ -31,6 +31,7 @@ class NYUDataset(data.Dataset):
         self.images = data_matrix["images"]
         self.depths = data_matrix["depths"]
         self.labels = data_matrix["labels"]
+        self.num_classes = np.unique(self.labels)
 
     def _fetch_artifact(self, artifact_name, artifact_version):
         artifact = self.run.use_artifact(f"{artifact_name}:{str(artifact_version)}")
@@ -54,4 +55,15 @@ class NYUDataset(data.Dataset):
                 tlabel.permute(1, 2, 0).numpy()[..., 0],
             ],
             titles=self._titles,
+        )
+
+    def build_dataloader(
+        self, batch_size: int, num_workers: int, shuffle: bool, pin_memory: bool
+    ) -> data.DataLoader:
+        return data.DataLoader(
+            self,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            shuffle=shuffle,
+            pin_memory=pin_memory,
         )
