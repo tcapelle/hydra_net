@@ -71,20 +71,20 @@ class Trainer:
     def valid_log(self, loss, example_ct):
         # Where the magic happens
         if self.log:
-            res = self.predict_one_batch()
-            self.log_image_table(*res)
             wandb.log({"val_loss": loss}, step=example_ct)
 
     def eval_one_epoch(self):
         self.model.eval()
         val_loss = 0.
         with torch.inference_mode():
-            for b in tqdm(self.valid_dl, leave=False):
+            for i, b in tqdm(enumerate(self.valid_dl), leave=False):
                 inputs, targets, _ = b
                 # Forward pass ➡
-                outputs = self.model(inputs)
+                preds = self.model(inputs)
                 # accum loss
-                val_loss += self.loss_func(outputs, targets)*len(inputs)
+                val_loss += self.loss_func(preds, targets)*len(inputs)
+                if self.log and i==0:
+                    self.log_image_table(inputs, preds, targets)
         val_loss = val_loss/len(self.valid_dl.dataset)
         self.valid_log(val_loss, self.example_ct)
         return val_loss
